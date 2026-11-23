@@ -1,0 +1,6 @@
+{
+  "name": "Cadence",
+  "description": "AI Social Media Marketing Agent for agencies, restaurants, retailers, and SMEs. Generate Facebook and LinkedIn posts, captions, hashtags, monthly content calendars, blog repurposing, analytics, and scheduled post approvals.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

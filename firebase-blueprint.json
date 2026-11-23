@@ -1,0 +1,243 @@
+{
+  "entities": {
+    "TenantAccount": {
+      "title": "TenantAccount",
+      "description": "SaaS subscriber organization profile, billing plan, AI credit usage, and white-label settings.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Firebase Auth UID of the SaaS account owner."
+        },
+        "ownerEmail": {
+          "type": "string",
+          "format": "email",
+          "minLength": 3,
+          "maxLength": 160,
+          "description": "Verified email of the account owner."
+        },
+        "companyName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "description": "Subscriber company or agency name."
+        },
+        "planTier": {
+          "type": "string",
+          "enum": ["starter", "growth", "agency"],
+          "description": "Active SaaS subscription tier."
+        },
+        "billingCycle": {
+          "type": "string",
+          "enum": ["monthly", "annual"],
+          "description": "Billing cadence."
+        },
+        "subscriptionStatus": {
+          "type": "string",
+          "enum": ["trialing", "active", "past_due"],
+          "description": "Subscription payment status."
+        },
+        "aiCreditsUsed": {
+          "type": "integer",
+          "description": "AI generations consumed in current cycle."
+        },
+        "aiCreditsLimit": {
+          "type": "integer",
+          "description": "Monthly AI generation limit for active tier."
+        },
+        "maxWorkspaces": {
+          "type": "integer",
+          "description": "Maximum client brand workspaces allowed on active tier."
+        },
+        "whiteLabelName": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 60,
+          "description": "Custom agency display name for client approval portals."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": [
+        "ownerId",
+        "ownerEmail",
+        "companyName",
+        "planTier",
+        "billingCycle",
+        "subscriptionStatus",
+        "aiCreditsUsed",
+        "aiCreditsLimit",
+        "maxWorkspaces",
+        "whiteLabelName",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "BrandWorkspace": {
+      "title": "BrandWorkspace",
+      "description": "Client or brand social media workspace owned by a SaaS tenant.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "handle": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "category": {
+          "type": "string",
+          "enum": ["Marketing Agency", "Restaurant", "Retailer", "SME"]
+        },
+        "industry": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "audience": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "voice": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "coverImage": { "type": "string", "minLength": 1, "maxLength": 250 },
+        "linkedinAccount": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "facebookAccount": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "ownerId",
+        "name",
+        "handle",
+        "category",
+        "industry",
+        "audience",
+        "voice",
+        "coverImage",
+        "linkedinAccount",
+        "facebookAccount",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "ScheduledPost": {
+      "title": "ScheduledPost",
+      "description": "Scheduled or pending approval Facebook/LinkedIn post under a SaaS tenant.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "workspaceId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "platform": { "type": "string", "enum": ["linkedin", "facebook"] },
+        "title": { "type": "string", "minLength": 1, "maxLength": 140 },
+        "pillar": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "caption": { "type": "string", "minLength": 1, "maxLength": 4000 },
+        "hashtags": { "type": "array" },
+        "scheduledDate": { "type": "string", "minLength": 10, "maxLength": 10 },
+        "scheduledTime": { "type": "string", "minLength": 5, "maxLength": 5 },
+        "status": {
+          "type": "string",
+          "enum": ["pending_approval", "approved", "scheduled", "published", "needs_revision"]
+        },
+        "revisionNote": { "type": "string", "minLength": 0, "maxLength": 500 },
+        "imageUrl": { "type": "string", "minLength": 0, "maxLength": 300 },
+        "source": {
+          "type": "string",
+          "enum": ["ai_studio", "blog_repurpose", "calendar_ai", "manual"]
+        },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "ownerId",
+        "workspaceId",
+        "platform",
+        "title",
+        "pillar",
+        "caption",
+        "hashtags",
+        "scheduledDate",
+        "scheduledTime",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "TeamSeat": {
+      "title": "TeamSeat",
+      "description": "Invited team member or client reviewer seat in a SaaS tenant.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "email": { "type": "string", "format": "email", "minLength": 3, "maxLength": 160 },
+        "role": { "type": "string", "enum": ["Owner", "Strategist", "Client Reviewer"] },
+        "status": { "type": "string", "enum": ["Active", "Invited"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "name", "email", "role", "status", "createdAt", "updatedAt"]
+    },
+    "BillingInvoice": {
+      "title": "BillingInvoice",
+      "description": "Subscription billing history record for a SaaS tenant.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "invoiceNumber": { "type": "string", "minLength": 3, "maxLength": 40 },
+        "planName": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "amountUsd": { "type": "number" },
+        "billingDate": { "type": "string", "minLength": 8, "maxLength": 20 },
+        "status": { "type": "string", "enum": ["Paid", "Pending"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "invoiceNumber", "planName", "amountUsd", "billingDate", "status", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/tenants/{tenantId}": {
+      "schema": { "$ref": "#/entities/TenantAccount" },
+      "description": "Root SaaS organization profile keyed by the owner's Firebase Auth UID."
+    },
+    "/tenants/{tenantId}/workspaces/{workspaceId}": {
+      "schema": { "$ref": "#/entities/BrandWorkspace" },
+      "description": "Brand workspaces managed by the SaaS tenant."
+    },
+    "/tenants/{tenantId}/posts/{postId}": {
+      "schema": { "$ref": "#/entities/ScheduledPost" },
+      "description": "Cross-platform social posts belonging to the tenant's workspaces."
+    },
+    "/tenants/{tenantId}/team/{memberId}": {
+      "schema": { "$ref": "#/entities/TeamSeat" },
+      "description": "Team collaborators and client reviewers under the SaaS tenant."
+    },
+    "/tenants/{tenantId}/invoices/{invoiceId}": {
+      "schema": { "$ref": "#/entities/BillingInvoice" },
+      "description": "Immutable billing invoice records for the SaaS tenant."
+    }
+  }
+}

@@ -1,0 +1,240 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global safety net: deny all access unless explicitly permitted below
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Global Hardened Primitives ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isTenantOwner(tenantId) {
+      return isVerifiedUser() && request.auth.uid == tenantId;
+    }
+
+    function parentTenantExists(tenantId) {
+      return exists(/databases/$(database)/documents/tenants/$(tenantId)) &&
+        get(/databases/$(database)/documents/tenants/$(tenantId)).data.ownerId == request.auth.uid;
+    }
+
+    // --- Validation Blueprints ---
+    function isValidTenant(data) {
+      return data.keys().hasAll([
+          'ownerId', 'ownerEmail', 'companyName', 'planTier', 'billingCycle',
+          'subscriptionStatus', 'aiCreditsUsed', 'aiCreditsLimit',
+          'maxWorkspaces', 'whiteLabelName', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'ownerId', 'ownerEmail', 'companyName', 'planTier', 'billingCycle',
+          'subscriptionStatus', 'aiCreditsUsed', 'aiCreditsLimit',
+          'maxWorkspaces', 'whiteLabelName', 'createdAt', 'updatedAt'
+        ]) &&
+        data.ownerId is string && isValidId(data.ownerId) && data.ownerId == request.auth.uid &&
+        data.ownerEmail is string && data.ownerEmail.size() >= 3 && data.ownerEmail.size() <= 160 &&
+        data.companyName is string && data.companyName.size() >= 1 && data.companyName.size() <= 80 &&
+        data.planTier in ['starter', 'growth', 'agency'] &&
+        data.billingCycle in ['monthly', 'annual'] &&
+        data.subscriptionStatus in ['trialing', 'active', 'past_due'] &&
+        data.aiCreditsUsed is int && data.aiCreditsUsed >= 0 && data.aiCreditsUsed <= 100000 &&
+        data.aiCreditsLimit is int && data.aiCreditsLimit >= 1 && data.aiCreditsLimit <= 100000 &&
+        data.maxWorkspaces is int && data.maxWorkspaces >= 1 && data.maxWorkspaces <= 100 &&
+        data.whiteLabelName is string && data.whiteLabelName.size() <= 60 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidWorkspace(data) {
+      return data.keys().hasAll([
+          'ownerId', 'name', 'handle', 'category', 'industry', 'audience',
+          'voice', 'coverImage', 'linkedinAccount', 'facebookAccount',
+          'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'ownerId', 'name', 'handle', 'category', 'industry', 'audience',
+          'voice', 'coverImage', 'linkedinAccount', 'facebookAccount',
+          'createdAt', 'updatedAt'
+        ]) &&
+        data.ownerId is string && isValidId(data.ownerId) && data.ownerId == request.auth.uid &&
+        data.name is string && data.name.size() >= 1 && data.name.size() <= 80 &&
+        data.handle is string && data.handle.size() >= 1 && data.handle.size() <= 40 &&
+        data.category in ['Marketing Agency', 'Restaurant', 'Retailer', 'SME'] &&
+        data.industry is string && data.industry.size() >= 1 && data.industry.size() <= 160 &&
+        data.audience is string && data.audience.size() >= 1 && data.audience.size() <= 200 &&
+        data.voice is string && data.voice.size() >= 1 && data.voice.size() <= 200 &&
+        data.coverImage is string && data.coverImage.size() >= 1 && data.coverImage.size() <= 250 &&
+        data.linkedinAccount is string && data.linkedinAccount.size() >= 1 && data.linkedinAccount.size() <= 80 &&
+        data.facebookAccount is string && data.facebookAccount.size() >= 1 && data.facebookAccount.size() <= 80 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidPost(data) {
+      return data.keys().hasAll([
+          'ownerId', 'workspaceId', 'platform', 'title', 'pillar', 'caption',
+          'hashtags', 'scheduledDate', 'scheduledTime', 'status',
+          'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'ownerId', 'workspaceId', 'platform', 'title', 'pillar', 'caption',
+          'hashtags', 'scheduledDate', 'scheduledTime', 'status',
+          'revisionNote', 'imageUrl', 'source', 'createdAt', 'updatedAt'
+        ]) &&
+        data.ownerId is string && isValidId(data.ownerId) && data.ownerId == request.auth.uid &&
+        data.workspaceId is string && isValidId(data.workspaceId) &&
+        data.platform in ['linkedin', 'facebook'] &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 140 &&
+        data.pillar is string && data.pillar.size() >= 1 && data.pillar.size() <= 80 &&
+        data.caption is string && data.caption.size() >= 1 && data.caption.size() <= 4000 &&
+        data.hashtags is list && data.hashtags.size() <= 15 &&
+        (data.hashtags.size() == 0 || (data.hashtags[0] is string && data.hashtags[0].size() <= 60)) &&
+        data.scheduledDate is string && data.scheduledDate.size() == 10 &&
+        data.scheduledTime is string && data.scheduledTime.size() == 5 &&
+        data.status in ['pending_approval', 'approved', 'scheduled', 'published', 'needs_revision'] &&
+        (!('revisionNote' in data) || (data.revisionNote is string && data.revisionNote.size() <= 500)) &&
+        (!('imageUrl' in data) || (data.imageUrl is string && data.imageUrl.size() <= 300)) &&
+        (!('source' in data) || data.source in ['ai_studio', 'blog_repurpose', 'calendar_ai', 'manual']) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidTeamSeat(data) {
+      return data.keys().hasAll(['ownerId', 'name', 'email', 'role', 'status', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['ownerId', 'name', 'email', 'role', 'status', 'createdAt', 'updatedAt']) &&
+        data.ownerId is string && isValidId(data.ownerId) && data.ownerId == request.auth.uid &&
+        data.name is string && data.name.size() >= 1 && data.name.size() <= 80 &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 160 &&
+        data.role in ['Owner', 'Strategist', 'Client Reviewer'] &&
+        data.status in ['Active', 'Invited'] &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidInvoice(data) {
+      return data.keys().hasAll(['ownerId', 'invoiceNumber', 'planName', 'amountUsd', 'billingDate', 'status', 'createdAt']) &&
+        data.keys().hasOnly(['ownerId', 'invoiceNumber', 'planName', 'amountUsd', 'billingDate', 'status', 'createdAt']) &&
+        data.ownerId is string && isValidId(data.ownerId) && data.ownerId == request.auth.uid &&
+        data.invoiceNumber is string && data.invoiceNumber.size() >= 3 && data.invoiceNumber.size() <= 40 &&
+        data.planName is string && data.planName.size() >= 1 && data.planName.size() <= 60 &&
+        (data.amountUsd is int || data.amountUsd is float) && data.amountUsd >= 0 && data.amountUsd <= 100000 &&
+        data.billingDate is string && data.billingDate.size() >= 8 && data.billingDate.size() <= 20 &&
+        data.status in ['Paid', 'Pending'] &&
+        data.createdAt is timestamp;
+    }
+
+    // --- Collection Rules ---
+    match /tenants/{tenantId} {
+      allow get: if isValidId(tenantId) && isTenantOwner(tenantId) && existing().ownerId == request.auth.uid;
+      allow list: if isVerifiedUser() && existing().ownerId == request.auth.uid;
+      allow create: if isValidId(tenantId) &&
+        isTenantOwner(tenantId) &&
+        isValidTenant(incoming()) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isValidId(tenantId) &&
+        isTenantOwner(tenantId) &&
+        isValidTenant(incoming()) &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        (
+          incoming().diff(existing()).affectedKeys().hasOnly(['aiCreditsUsed', 'updatedAt']) ||
+          incoming().diff(existing()).affectedKeys().hasOnly(['companyName', 'whiteLabelName', 'updatedAt']) ||
+          incoming().diff(existing()).affectedKeys().hasOnly(['planTier', 'billingCycle', 'subscriptionStatus', 'aiCreditsLimit', 'maxWorkspaces', 'updatedAt'])
+        );
+      allow delete: if false;
+
+      match /workspaces/{workspaceId} {
+        allow get: if isValidId(tenantId) && isValidId(workspaceId) && isTenantOwner(tenantId) && existing().ownerId == request.auth.uid;
+        allow list: if isVerifiedUser() && existing().ownerId == request.auth.uid;
+        allow create: if isValidId(tenantId) && isValidId(workspaceId) &&
+          isTenantOwner(tenantId) &&
+          isValidWorkspace(incoming()) &&
+          parentTenantExists(tenantId) &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time;
+        allow update: if isValidId(tenantId) && isValidId(workspaceId) &&
+          isTenantOwner(tenantId) &&
+          isValidWorkspace(incoming()) &&
+          incoming().ownerId == existing().ownerId &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['name', 'industry', 'audience', 'voice', 'linkedinAccount', 'facebookAccount', 'updatedAt']);
+        allow delete: if isValidId(tenantId) && isValidId(workspaceId) && isTenantOwner(tenantId) && existing().ownerId == request.auth.uid;
+      }
+
+      match /posts/{postId} {
+        allow get: if isValidId(tenantId) && isValidId(postId) && isTenantOwner(tenantId) && existing().ownerId == request.auth.uid;
+        allow list: if isVerifiedUser() && existing().ownerId == request.auth.uid;
+        allow create: if isValidId(tenantId) && isValidId(postId) &&
+          isTenantOwner(tenantId) &&
+          isValidPost(incoming()) &&
+          parentTenantExists(tenantId) &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time;
+        allow update: if isValidId(tenantId) && isValidId(postId) &&
+          isTenantOwner(tenantId) &&
+          isValidPost(incoming()) &&
+          existing().status != 'published' &&
+          incoming().ownerId == existing().ownerId &&
+          incoming().workspaceId == existing().workspaceId &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time &&
+          (
+            incoming().diff(existing()).affectedKeys().hasOnly(['status', 'revisionNote', 'updatedAt']) ||
+            incoming().diff(existing()).affectedKeys().hasOnly(['caption', 'hashtags', 'title', 'pillar', 'scheduledDate', 'scheduledTime', 'status', 'revisionNote', 'imageUrl', 'updatedAt'])
+          );
+        allow delete: if isValidId(tenantId) && isValidId(postId) && isTenantOwner(tenantId) && existing().ownerId == request.auth.uid;
+      }
+
+      match /team/{memberId} {
+        allow get: if isValidId(tenantId) && isValidId(memberId) && isTenantOwner(tenantId) && existing().ownerId == request.auth.uid;
+        allow list: if isVerifiedUser() && existing().ownerId == request.auth.uid;
+        allow create: if isValidId(tenantId) && isValidId(memberId) &&
+          isTenantOwner(tenantId) &&
+          isValidTeamSeat(incoming()) &&
+          parentTenantExists(tenantId) &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time;
+        allow update: if isValidId(tenantId) && isValidId(memberId) &&
+          isTenantOwner(tenantId) &&
+          isValidTeamSeat(incoming()) &&
+          incoming().ownerId == existing().ownerId &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['role', 'status', 'updatedAt']);
+        allow delete: if isValidId(tenantId) && isValidId(memberId) && isTenantOwner(tenantId) && existing().ownerId == request.auth.uid;
+      }
+
+      match /invoices/{invoiceId} {
+        allow get: if isValidId(tenantId) && isValidId(invoiceId) && isTenantOwner(tenantId) && existing().ownerId == request.auth.uid;
+        allow list: if isVerifiedUser() && existing().ownerId == request.auth.uid;
+        allow create: if isValidId(tenantId) && isValidId(invoiceId) &&
+          isTenantOwner(tenantId) &&
+          isValidInvoice(incoming()) &&
+          parentTenantExists(tenantId) &&
+          incoming().createdAt == request.time;
+        allow update, delete: if false;
+      }
+    }
+  }
+}
